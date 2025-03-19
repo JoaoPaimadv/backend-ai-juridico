@@ -1,23 +1,33 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
 import openai
 
 app = FastAPI()
 
-# Substitua pela sua API Key da OpenAI (pode pegar uma gratuita no site da OpenAI)
-openai.api_key = "SUA_API_KEY_AQUI"
+# Configuração da OpenAI
+openai.api_key = "SUA_CHAVE_DA_OPENAI"
 
-class Question(BaseModel):
-    question: str
+class Pergunta(BaseModel):
+    pergunta: str
 
-@app.post("/ask")
-async def ask_question(q: Question):
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": q.question}]
-        )
-        return {"answer": response["choices"][0]["message"]["content"]}
-    except Exception as e:
-        return {"answer": "Erro ao processar a pergunta."}
+@app.post("/pergunta")
+def responder_pergunta(data: Pergunta):
+    resposta = openai.ChatCompletion.create(
+        model="gpt-4-turbo",
+        messages=[{"role": "system", "content": "Você é um advogado especializado em direito empresarial e civil."},
+                  {"role": "user", "content": data.pergunta}]
+    )
+    return {"resposta": resposta["choices"][0]["message"]["content"]}
 
+@app.post("/editar_documento")
+async def editar_documento(arquivo: UploadFile = File(...)):
+    conteudo = await arquivo.read()
+    prompt = f"Edite e melhore este documento jurídico:\n\n{conteudo.decode()}"
+    
+    resposta = openai.ChatCompletion.create(
+        model="gpt-4-turbo",
+        messages=[{"role": "system", "content": "Você é um advogado especialista na revisão e edição de contratos."},
+                  {"role": "user", "content": prompt}]
+    )
+    
+    return {"documento_editado": resposta["choices"][0]["message"]["content"]}
